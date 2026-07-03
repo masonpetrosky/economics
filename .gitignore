@@ -10,6 +10,9 @@ data/interim/*
 !data/raw/.gitkeep
 !data/interim/.gitkeep
 
+# Local worktrees
+.worktrees/
+
 # Outputs
 outputs/charts/*.png
 outputs/tables/*.csv
