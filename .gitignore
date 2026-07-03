@@ -4,6 +4,10 @@ __pycache__/
 .venv/
 .env
 
+# Notebooks
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
+
 # Data artifacts
 data/raw/*
 data/interim/*
