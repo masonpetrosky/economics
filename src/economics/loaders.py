@@ -9,6 +9,21 @@ from pathlib import Path
 import pandas as pd
 
 CBO_PROXY_VALUE_COL = "median_adjusted_income_after_transfers_taxes_2022_dollars"
+CPS_IPUMS_REQUIRED_COLUMNS = (
+    "year",
+    "serial",
+    "pernum",
+    "age",
+    "asecwt",
+    "household_size",
+    "money_income",
+    "realized_capital_gains",
+    "noncash_benefits",
+    "health_insurance_value",
+    "federal_income_taxes",
+    "payroll_taxes",
+    "state_local_income_taxes",
+)
 
 
 @dataclass(frozen=True)
@@ -27,6 +42,14 @@ RAW_SOURCE_FILE_SPECS: dict[str, SourceFileSpec] = {
         description=(
             "CBO researchers ZIP containing adjusted household income after transfers "
             "and federal taxes."
+        ),
+    ),
+    "ipums_cps_asec_extract": SourceFileSpec(
+        file_name="ipums_cps_asec_extract.csv",
+        required_columns=CPS_IPUMS_REQUIRED_COLUMNS,
+        description=(
+            "Normalized CPS ASEC/IPUMS person-level extract for custom "
+            "adult-equivalent disposable-resource estimates."
         ),
     ),
     "fred_real_median_personal_income": SourceFileSpec(
