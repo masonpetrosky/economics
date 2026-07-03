@@ -86,9 +86,20 @@ Useful because it is individual-level and avoids household-composition problems.
 
 Useful because it is after-tax, inflation-adjusted, broad, and timely. But it is an average, not a median, so it can be moved by income gains at the top.
 
+For annual comparison charts, the monthly FRED/BEA series is averaged within
+complete calendar years. Incomplete current-year observations are excluded until
+a full 12 months are available.
+
 ### CBO income after transfers and taxes
 
 Useful because it is distributional and comprehensive. It is currently the best public shortcut for this project.
+
+## Public proxy comparison charts
+
+The FRED comparison metrics are included to benchmark trends, not to replace the
+project's headline concept. Because the public series use different units and
+deflator bases, the comparison chart indexes each series to its first observation
+rather than plotting all lines as directly comparable dollar levels.
 
 ## Planned sensitivity toggles
 

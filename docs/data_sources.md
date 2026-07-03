@@ -60,7 +60,14 @@ Expected manual file:
 data/raw/fred_real_median_personal_income.csv
 ```
 
-Expected columns for project import:
+Expected columns for project import use either the direct FRED graph export:
+
+```text
+observation_date
+MEPAINUSA672N
+```
+
+or the project-shaped format:
 
 ```text
 year
@@ -85,7 +92,14 @@ Expected manual file:
 data/raw/fred_real_median_household_income.csv
 ```
 
-Expected columns for project import:
+Expected columns for project import use either the direct FRED graph export:
+
+```text
+observation_date
+MEHOINUSA672N
+```
+
+or the project-shaped format:
 
 ```text
 year
@@ -102,7 +116,9 @@ value
 
 Project use:
 
-A timely average after-tax purchasing-power benchmark. Not a median.
+A timely average after-tax purchasing-power benchmark. Not a median. The project
+aggregates monthly observations to full calendar-year means and excludes
+incomplete monthly years from processed annual outputs.
 
 Expected manual file:
 
@@ -110,7 +126,14 @@ Expected manual file:
 data/raw/fred_real_disposable_personal_income_per_capita.csv
 ```
 
-Expected columns for project import:
+Expected columns for project import use either the direct FRED graph export:
+
+```text
+observation_date
+A229RX0
+```
+
+or the project-shaped format:
 
 ```text
 year

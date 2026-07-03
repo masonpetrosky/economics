@@ -32,17 +32,26 @@ RAW_SOURCE_FILE_SPECS: dict[str, SourceFileSpec] = {
     "fred_real_median_personal_income": SourceFileSpec(
         file_name="fred_real_median_personal_income.csv",
         required_columns=("year", "value"),
-        description="FRED/Census real median personal income comparison series.",
+        description=(
+            "FRED/Census real median personal income comparison series. The FRED "
+            "builder also accepts observation_date,MEPAINUSA672N graph exports."
+        ),
     ),
     "fred_real_median_household_income": SourceFileSpec(
         file_name="fred_real_median_household_income.csv",
         required_columns=("year", "value"),
-        description="FRED/Census real median household income comparison series.",
+        description=(
+            "FRED/Census real median household income comparison series. The FRED "
+            "builder also accepts observation_date,MEHOINUSA672N graph exports."
+        ),
     ),
     "fred_real_disposable_personal_income_per_capita": SourceFileSpec(
         file_name="fred_real_disposable_personal_income_per_capita.csv",
         required_columns=("year", "value"),
-        description="FRED/BEA real disposable personal income per capita comparison series.",
+        description=(
+            "FRED/BEA real disposable personal income per capita comparison series. "
+            "The FRED builder also accepts observation_date,A229RX0 graph exports."
+        ),
     ),
 }
 

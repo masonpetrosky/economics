@@ -100,7 +100,9 @@ data/raw/fred_real_median_household_income.csv
 data/raw/fred_real_disposable_personal_income_per_capita.csv
 ```
 
-For the current loaders, each raw comparison CSV should include `year` and `value` columns.
+For FRED comparison metrics, the builder accepts direct FRED graph CSV exports with
+`observation_date,<FRED_SERIES_ID>` columns or project-shaped CSVs with `year,value`
+columns.
 The CBO proxy builder expects CBO's official researchers ZIP at:
 
 ```text
@@ -138,6 +140,23 @@ The script writes:
 data/processed/cbo_proxy_median_adjusted_income_after_tax_transfer.csv
 ```
 
+## Rebuild the FRED comparison data
+
+Manually download FRED graph CSV exports into the documented `data/raw/fred_*.csv`
+paths, then run:
+
+```bash
+python scripts/build_fred_comparisons.py
+```
+
+The script writes:
+
+```text
+data/processed/fred_real_median_personal_income.csv
+data/processed/fred_real_median_household_income.csv
+data/processed/fred_real_disposable_personal_income_per_capita.csv
+```
+
 ## Reproduce the CBO proxy chart
 
 ```bash
@@ -150,6 +169,21 @@ The chart will be saved to:
 outputs/charts/cbo_proxy_median_adjusted_income.png
 ```
 
+## Reproduce the public proxy comparison chart
+
+```bash
+python scripts/plot_public_proxies.py
+```
+
+The chart will be saved to:
+
+```text
+outputs/charts/public_proxy_comparison.png
+```
+
+This chart indexes each series to its first observation. That avoids presenting
+different deflator bases as directly comparable dollar levels.
+
 ## Current starter files
 
 ```text
@@ -158,7 +192,12 @@ docs/data_sources.md
 src/economics/metrics.py
 scripts/plot_cbo_proxy.py
 scripts/build_cbo_proxy.py
+scripts/build_fred_comparisons.py
+scripts/plot_public_proxies.py
 data/processed/cbo_proxy_median_adjusted_income_after_tax_transfer.csv
+data/processed/fred_real_median_personal_income.csv
+data/processed/fred_real_median_household_income.csv
+data/processed/fred_real_disposable_personal_income_per_capita.csv
 ```
 
 ## Status
