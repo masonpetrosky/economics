@@ -59,11 +59,16 @@ The first version uses CBO's median adjusted household income after transfers an
 
 This proxy is useful because CBO's income concept is broad. It includes market income, realized capital gains, social insurance benefits, means-tested transfers, and federal taxes. It also adjusts for household size.
 
+For this MVP, the bundled processed CBO proxy is an executable starter series. It is useful for building and testing the workflow, but it should not be treated as publication-ready until each value is checked against the official CBO supplemental workbook.
+
 Limitations:
 
-- It is based on households, not a custom person-level CPS/IPUMS build.
-- It subtracts federal taxes, but state/local tax handling may differ from the ideal project concept.
-- It includes health benefits, but valuing health insurance is inherently controversial.
+- household composition can still differ from the custom person-level CPS/IPUMS build.
+- federal taxes versus state/local taxes may differ from the ideal project concept.
+- transfers are included through CBO definitions rather than a custom program-level model.
+- noncash benefits are included through CBO definitions rather than a custom valuation.
+- realized capital gains are included, but sensitivity work should show versions with and without them.
+- health-benefit valuation is inherently controversial.
 - It ends in 2022 in the current CBO release.
 - Pandemic-era years include temporary policy effects that should be labeled clearly.
 

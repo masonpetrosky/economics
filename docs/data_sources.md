@@ -21,6 +21,19 @@ Notes:
 
 CBO defines income after transfers and taxes as income before transfers and taxes plus means-tested transfers minus federal taxes. CBO's broader distributional framework includes realized capital gains and several transfer/benefit categories. The CBO proxy should be treated as the first benchmark, not the final custom metric.
 
+Expected manual file:
+
+```text
+data/raw/cbo_distribution_household_income_2022.csv
+```
+
+Expected columns for project import:
+
+```text
+year
+median_adjusted_income_after_transfers_taxes_2022_dollars
+```
+
 ## FRED / Census: Real median personal income
 
 - Series: MEPAINUSA672N
@@ -34,6 +47,19 @@ Project use:
 
 A clean individual-level comparison series. It is useful because it avoids household-composition distortions, but it is pretax and excludes major noncash benefits.
 
+Expected manual file:
+
+```text
+data/raw/fred_real_median_personal_income.csv
+```
+
+Expected columns for project import:
+
+```text
+year
+value
+```
+
 ## FRED / Census: Real median household income
 
 - Series: MEHOINUSA672N
@@ -46,6 +72,19 @@ Project use:
 
 A familiar benchmark, but not the preferred headline because household composition changes over time.
 
+Expected manual file:
+
+```text
+data/raw/fred_real_median_household_income.csv
+```
+
+Expected columns for project import:
+
+```text
+year
+value
+```
+
 ## FRED / BEA: Real disposable personal income per capita
 
 - Series: A229RX0
@@ -57,6 +96,19 @@ A familiar benchmark, but not the preferred headline because household compositi
 Project use:
 
 A timely average after-tax purchasing-power benchmark. Not a median.
+
+Expected manual file:
+
+```text
+data/raw/fred_real_disposable_personal_income_per_capita.csv
+```
+
+Expected columns for project import:
+
+```text
+year
+value
+```
 
 ## Census: Money income definition
 

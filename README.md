@@ -65,12 +65,55 @@ Better options:
    - all persons versus adults only,
    - square-root equivalence scale versus per-capita scale.
 
-## Quick start
+## Setup
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
-pip install pandas matplotlib
+source .venv/bin/activate
+pip install -e ".[dev]"
+```
+
+## Project structure
+
+```text
+data/raw/          manually downloaded source files
+data/interim/      scratch transformations that are safe to regenerate
+data/processed/    checked starter/proxy series used by scripts and notebooks
+docs/              methodology and source notes
+notebooks/         exploratory notebooks
+outputs/charts/    generated chart images
+outputs/tables/    generated summary tables
+scripts/           command-line helpers
+src/economics/     package code
+tests/             focused pytest coverage
+```
+
+## Manual source-file expectations
+
+External public datasets are not downloaded automatically. Put manually downloaded or exported files in these locations:
+
+```text
+data/raw/cbo_distribution_household_income_2022.csv
+data/raw/fred_real_median_personal_income.csv
+data/raw/fred_real_median_household_income.csv
+data/raw/fred_real_disposable_personal_income_per_capita.csv
+```
+
+For the current loaders, each raw comparison CSV should include `year` and `value` columns. The starter CBO proxy uses `year` and `median_adjusted_income_after_transfers_taxes_2022_dollars`.
+
+## Starter notebook
+
+Open:
+
+```text
+notebooks/01_cbo_proxy_starter.ipynb
+```
+
+The notebook loads the bundled CBO starter proxy, prints a summary table, and plots the proxy metric. Treat the bundled CBO values as starter data until they are verified against the official CBO supplemental workbook.
+
+## Reproduce the CBO proxy chart
+
+```bash
 python scripts/plot_cbo_proxy.py
 ```
 
