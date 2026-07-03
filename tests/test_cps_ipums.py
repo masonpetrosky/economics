@@ -198,6 +198,61 @@ def test_estimate_cps_annual_medians_drops_invalid_weights_and_household_sizes()
     assert medians.loc[medians["year"] == 2020, "value"].iloc[0] == 11_000.0
 
 
+def test_estimate_cps_annual_medians_rejects_years_lost_to_invalid_rows() -> None:
+    df = pd.concat(
+        [
+            cps_fixture(),
+            pd.DataFrame(
+                [
+                    {
+                        "year": 2022,
+                        "serial": 11,
+                        "pernum": 1,
+                        "age": 60,
+                        "asecwt": 0,
+                        "household_size": 1,
+                        "money_income": 50_000,
+                        "realized_capital_gains": 0,
+                        "noncash_benefits": 0,
+                        "health_insurance_value": 0,
+                        "federal_income_taxes": 0,
+                        "payroll_taxes": 0,
+                        "state_local_income_taxes": 0,
+                    },
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+
+    with pytest.raises(ValueError, match="2022"):
+        estimate_cps_annual_medians(df)
+
+
+def test_estimate_cps_annual_medians_rejects_years_lost_to_adult_filter() -> None:
+    df = cps_fixture()
+    df.loc[df["year"] == 2020, "age"] = 10
+
+    with pytest.raises(ValueError, match="2020"):
+        estimate_cps_annual_medians(df, CpsVariant(population="adults"))
+
+
+def test_estimate_cps_annual_medians_ignores_missing_excluded_components() -> None:
+    df = cps_fixture()
+    adult_2020 = (df["year"] == 2020) & (df["age"] >= 18)
+    df.loc[adult_2020, "realized_capital_gains"] = pd.NA
+    df.loc[adult_2020, "health_insurance_value"] = pd.NA
+    variant = CpsVariant(
+        include_capital_gains=False,
+        include_health_insurance=False,
+        population="adults",
+    )
+
+    medians = estimate_cps_annual_medians(df, variant)
+
+    assert medians.loc[medians["year"] == 2020, "value"].iloc[0] == 45_000.0
+
+
 def test_estimate_cps_annual_medians_rejects_empty_filtered_data() -> None:
     df = cps_fixture()
     df["asecwt"] = 0
