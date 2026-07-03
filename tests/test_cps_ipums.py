@@ -119,6 +119,15 @@ def test_estimate_cps_annual_medians_uses_person_weights_by_year() -> None:
     assert medians["source"].unique().tolist() == ["CPS ASEC/IPUMS normalized extract"]
 
 
+def test_estimate_cps_annual_medians_rejects_duplicate_person_rows() -> None:
+    df = pd.concat([cps_fixture(), cps_fixture().iloc[[1]]], ignore_index=True)
+
+    with pytest.raises(ValueError, match="Duplicate CPS person rows") as exc_info:
+        estimate_cps_annual_medians(df)
+
+    assert "2020" in str(exc_info.value)
+
+
 def test_estimate_cps_annual_medians_supports_adult_population_filter() -> None:
     medians = estimate_cps_annual_medians(cps_fixture(), CpsVariant(population="adults"))
 

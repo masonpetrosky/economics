@@ -30,6 +30,7 @@ BASE_NUMERIC_COLUMNS = (
     "asecwt",
     "household_size",
 )
+CPS_PERSON_KEY_COLUMNS = ("year", "serial", "pernum")
 ALWAYS_INCLUDED_RESOURCE_COMPONENT_COLUMNS = (
     "money_income",
     "noncash_benefits",
@@ -105,6 +106,23 @@ def _raise_if_years_lost(
     raise ValueError(f"{empty_message}: {years}")
 
 
+def _raise_if_duplicate_person_rows(df: pd.DataFrame) -> None:
+    duplicate_mask = df.duplicated(subset=CPS_PERSON_KEY_COLUMNS, keep=False)
+    if not duplicate_mask.any():
+        return
+
+    duplicate_keys = (
+        df.loc[duplicate_mask, list(CPS_PERSON_KEY_COLUMNS)]
+        .drop_duplicates()
+        .sort_values(list(CPS_PERSON_KEY_COLUMNS))
+    )
+    key_details = "; ".join(
+        f"year={row.year}, serial={row.serial}, pernum={row.pernum}"
+        for row in duplicate_keys.itertuples(index=False)
+    )
+    raise ValueError(f"Duplicate CPS person rows for key(s): {key_details}")
+
+
 def validate_cps_columns(
     df: pd.DataFrame,
     source_label: str = "CPS/IPUMS input",
@@ -122,6 +140,7 @@ def build_cps_person_resources(
     """Return person rows with comprehensive and equivalized resources."""
 
     validate_cps_columns(df)
+    _raise_if_duplicate_person_rows(df)
     work = df.copy()
     required_numeric_columns = _required_numeric_columns(variant)
     work["year"] = pd.to_numeric(work["year"], errors="coerce")
