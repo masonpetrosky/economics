@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import subprocess
+import sys
+from pathlib import Path
+
 import pandas as pd
 import pytest
 
@@ -9,6 +13,7 @@ from economics.cps import (
     estimate_cps_annual_medians,
     validate_cps_columns,
 )
+from economics.paths import repo_root
 
 
 def cps_fixture() -> pd.DataFrame:
@@ -207,3 +212,69 @@ def test_estimate_cps_annual_medians_rejects_empty_filtered_data() -> None:
 def test_cps_variant_rejects_unknown_population() -> None:
     with pytest.raises(ValueError, match="population must be one of: all, adults"):
         CpsVariant(population="children")
+
+
+def write_cps_fixture_csv(path: Path) -> None:
+    cps_fixture().to_csv(path, index=False)
+
+
+def test_build_cps_ipums_demo_script_writes_processed_csv(tmp_path: Path) -> None:
+    raw_csv = tmp_path / "ipums_cps_asec_extract.csv"
+    out_csv = tmp_path / "processed.csv"
+    write_cps_fixture_csv(raw_csv)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(repo_root() / "scripts" / "build_cps_ipums_demo.py"),
+            "--raw-csv",
+            str(raw_csv),
+            "--out",
+            str(out_csv),
+        ],
+        cwd=repo_root(),
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    output = pd.read_csv(out_csv)
+
+    assert "Wrote 2 CPS/IPUMS median rows" in result.stdout
+    assert list(output.columns) == [
+        "year",
+        "value",
+        "series",
+        "source",
+        "variant",
+        "include_capital_gains",
+        "include_health_insurance",
+        "population",
+        "notes",
+    ]
+    assert output["notes"].unique().tolist() == [
+        "Fixture/demo output until built from a real IPUMS extract."
+    ]
+
+
+def test_build_cps_ipums_demo_script_reports_missing_raw_file(tmp_path: Path) -> None:
+    missing_raw = tmp_path / "missing.csv"
+    out_csv = tmp_path / "processed.csv"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(repo_root() / "scripts" / "build_cps_ipums_demo.py"),
+            "--raw-csv",
+            str(missing_raw),
+            "--out",
+            str(out_csv),
+        ],
+        cwd=repo_root(),
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 1
+    assert f"Expected CPS/IPUMS input file not found: {missing_raw}" in result.stderr
+    assert not out_csv.exists()
