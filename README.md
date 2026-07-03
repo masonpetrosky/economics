@@ -98,6 +98,7 @@ data/raw/61911-additional-data-for-researchers.zip
 data/raw/fred_real_median_personal_income.csv
 data/raw/fred_real_median_household_income.csv
 data/raw/fred_real_disposable_personal_income_per_capita.csv
+data/raw/ipums_cps_asec_extract.csv
 ```
 
 For FRED comparison metrics, the builder accepts direct FRED graph CSV exports with
@@ -198,6 +199,34 @@ outputs/tables/public_proxy_summary.csv
 
 It includes full-span growth for each series and common-overlap growth across all
 four public proxies.
+
+## Build the CPS/IPUMS demo microdata estimate
+
+Phase 1 of the custom microdata path expects a manually prepared normalized
+CPS ASEC/IPUMS extract at:
+
+```text
+data/raw/ipums_cps_asec_extract.csv
+```
+
+The normalized extract is one row per person and uses income-reference `year`,
+person weight `asecwt`, `household_size`, and named resource and tax component
+columns documented in `docs/data_sources.md`.
+
+Run:
+
+```bash
+python scripts/build_cps_ipums_demo.py
+```
+
+The script writes:
+
+```text
+data/processed/cps_ipums_median_adult_equivalent_resources.csv
+```
+
+Until the input is built from a real CPS ASEC/IPUMS extract, this workflow is a
+schema and estimator demonstration rather than research evidence.
 
 ## Current starter files
 

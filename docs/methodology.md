@@ -118,6 +118,19 @@ Suggested toggles:
 6. Federal-only taxes versus federal + state/local taxes.
 7. Household ranking versus person-weighted ranking.
 
+## CPS/IPUMS phase-1 estimator boundary
+
+The first custom microdata implementation uses a normalized CPS ASEC/IPUMS-shaped
+person file to prove the estimator contract before depending on a real extract.
+It validates one row per person, builds disposable-resource components, applies
+the square-root household-size adjustment, and calculates person-weighted annual
+medians.
+
+The phase-1 toggles cover realized capital gains, health-insurance value, and
+all-persons versus adult-only populations. Output built from fixtures or
+handmade demo files is not research evidence; publication-quality interpretation
+requires a real CPS ASEC/IPUMS extract and a reviewed variable mapping.
+
 ## Research questions
 
 1. Has the median person-equivalent comprehensive income grown faster or slower than real median personal income?

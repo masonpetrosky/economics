@@ -167,6 +167,35 @@ Project use:
 
 Likely long-run microdata source for a custom person-weighted equivalized income measure.
 
+Expected normalized manual file:
+
+```text
+data/raw/ipums_cps_asec_extract.csv
+```
+
+Normalized phase-1 columns:
+
+```text
+year
+serial
+pernum
+age
+asecwt
+household_size
+money_income
+realized_capital_gains
+noncash_benefits
+health_insurance_value
+federal_income_taxes
+payroll_taxes
+state_local_income_taxes
+```
+
+`year` is the income reference year. The normalized file is one row per person.
+Household or resource-unit values may be repeated across people in the same
+unit so the estimator can compute a person-weighted median without summing
+household values across person rows.
+
 Future work:
 
 - Pull annual ASEC files.
