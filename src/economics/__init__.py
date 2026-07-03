@@ -1,5 +1,6 @@
 """Economics data-project package."""
 
+from economics.cbo import build_cbo_proxy_from_researchers_zip
 from economics.equivalence import equivalize_resources, square_root_equivalence_scale
 from economics.loaders import CBO_PROXY_VALUE_COL, load_cbo_proxy, load_comparison_series
 from economics.resources import ResourceComponents
@@ -9,6 +10,7 @@ __all__ = [
     "CBO_PROXY_VALUE_COL",
     "ResourceComponents",
     "add_growth_columns",
+    "build_cbo_proxy_from_researchers_zip",
     "equivalize_resources",
     "load_cbo_proxy",
     "load_comparison_series",

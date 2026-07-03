@@ -22,9 +22,12 @@ class SourceFileSpec:
 
 RAW_SOURCE_FILE_SPECS: dict[str, SourceFileSpec] = {
     "cbo_distribution_household_income_2022": SourceFileSpec(
-        file_name="cbo_distribution_household_income_2022.csv",
-        required_columns=("year", CBO_PROXY_VALUE_COL),
-        description="CBO adjusted household income after transfers and federal taxes.",
+        file_name="61911-additional-data-for-researchers.zip",
+        required_columns=("year", "adj_inc_after_transfers_taxes"),
+        description=(
+            "CBO researchers ZIP containing adjusted household income after transfers "
+            "and federal taxes."
+        ),
     ),
     "fred_real_median_personal_income": SourceFileSpec(
         file_name="fred_real_median_personal_income.csv",

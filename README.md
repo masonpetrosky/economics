@@ -40,6 +40,7 @@ The first version uses a close public proxy:
 This is not perfect, but it is useful because CBO already adjusts household income for household size and includes a broad set of income, transfer, tax, and benefit concepts.
 
 The seed data in this repo starts with CBO's 1979-2022 proxy series discussed in `docs/methodology.md`.
+It can be rebuilt from CBO's official Additional Data for Researchers ZIP.
 
 ## Why not just use median household income?
 
@@ -93,13 +94,24 @@ tests/             focused pytest coverage
 External public datasets are not downloaded automatically. Put manually downloaded or exported files in these locations:
 
 ```text
-data/raw/cbo_distribution_household_income_2022.csv
+data/raw/61911-additional-data-for-researchers.zip
 data/raw/fred_real_median_personal_income.csv
 data/raw/fred_real_median_household_income.csv
 data/raw/fred_real_disposable_personal_income_per_capita.csv
 ```
 
-For the current loaders, each raw comparison CSV should include `year` and `value` columns. The starter CBO proxy uses `year` and `median_adjusted_income_after_transfers_taxes_2022_dollars`.
+For the current loaders, each raw comparison CSV should include `year` and `value` columns.
+The CBO proxy builder expects CBO's official researchers ZIP at:
+
+```text
+data/raw/61911-additional-data-for-researchers.zip
+```
+
+Inside that ZIP, the builder reads:
+
+```text
+61911-additional-data-for-researchers/CBO_distribution_household_income_2022_data/households_ranked_by_inc_after_trans_tax_table_04_median_household_income_1979_2022.csv
+```
 
 ## Starter notebook
 
@@ -109,7 +121,22 @@ Open:
 notebooks/01_cbo_proxy_starter.ipynb
 ```
 
-The notebook loads the bundled CBO starter proxy, prints a summary table, and plots the proxy metric. Treat the bundled CBO values as starter data until they are verified against the official CBO supplemental workbook.
+The notebook loads the bundled CBO proxy, prints a summary table, and plots the proxy metric.
+Treat the CBO proxy as the first benchmark, not the final custom measure.
+
+## Rebuild the CBO proxy data
+
+Manually download CBO's `61911-additional-data-for-researchers.zip` file into `data/raw/`, then run:
+
+```bash
+python scripts/build_cbo_proxy.py
+```
+
+The script writes:
+
+```text
+data/processed/cbo_proxy_median_adjusted_income_after_tax_transfer.csv
+```
 
 ## Reproduce the CBO proxy chart
 
@@ -130,9 +157,10 @@ docs/methodology.md
 docs/data_sources.md
 src/economics/metrics.py
 scripts/plot_cbo_proxy.py
+scripts/build_cbo_proxy.py
 data/processed/cbo_proxy_median_adjusted_income_after_tax_transfer.csv
 ```
 
 ## Status
 
-This is a starter scaffold, not a final research product. The CBO proxy values should be verified against the official CBO supplemental workbook before publication.
+This is a starter scaffold, not a final research product. The CBO proxy is now reproducible from CBO's official researchers ZIP, but the headline metric still needs a custom microdata build before publication-quality interpretation.

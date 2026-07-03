@@ -59,7 +59,7 @@ The first version uses CBO's median adjusted household income after transfers an
 
 This proxy is useful because CBO's income concept is broad. It includes market income, realized capital gains, social insurance benefits, means-tested transfers, and federal taxes. It also adjusts for household size.
 
-For this MVP, the bundled processed CBO proxy is an executable starter series. It is useful for building and testing the workflow, but it should not be treated as publication-ready until each value is checked against the official CBO supplemental workbook.
+For this MVP, the bundled processed CBO proxy is an executable starter series rebuilt from CBO's official Additional Data for Researchers ZIP. It is useful for building and testing the workflow, but it should not be treated as the final publication-quality project metric until a custom person-weighted microdata build is added.
 
 Limitations:
 

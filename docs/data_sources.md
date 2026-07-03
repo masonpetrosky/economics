@@ -16,6 +16,7 @@ Primary MVP source:
 Useful related page:
 
 - Data and supplemental information page: https://www.cbo.gov/publication/62300
+- Additional Data for Researchers ZIP: https://www.cbo.gov/system/files/2026-01/61911-additional-data-for-researchers.zip
 
 Notes:
 
@@ -24,14 +25,20 @@ CBO defines income after transfers and taxes as income before transfers and taxe
 Expected manual file:
 
 ```text
-data/raw/cbo_distribution_household_income_2022.csv
+data/raw/61911-additional-data-for-researchers.zip
 ```
 
-Expected columns for project import:
+Expected member inside the ZIP:
+
+```text
+61911-additional-data-for-researchers/CBO_distribution_household_income_2022_data/households_ranked_by_inc_after_trans_tax_table_04_median_household_income_1979_2022.csv
+```
+
+Expected columns in that member:
 
 ```text
 year
-median_adjusted_income_after_transfers_taxes_2022_dollars
+adj_inc_after_transfers_taxes
 ```
 
 ## FRED / Census: Real median personal income

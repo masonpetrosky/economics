@@ -13,7 +13,7 @@ def test_starter_notebook_exists_and_mentions_cbo_proxy_caveat() -> None:
     )
 
     assert "starter proxy" in text
-    assert "official CBO supplemental workbook" in text
+    assert "official Additional Data for Researchers ZIP" in text
     assert "not publication-ready" in text
 
 
