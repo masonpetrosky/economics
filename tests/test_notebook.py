@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 
-
 NOTEBOOK_PATH = Path("notebooks/01_cbo_proxy_starter.ipynb")
 
 

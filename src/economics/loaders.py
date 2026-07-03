@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 CBO_PROXY_VALUE_COL = "median_adjusted_income_after_transfers_taxes_2022_dollars"
 
 
