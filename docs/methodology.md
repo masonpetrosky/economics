@@ -101,6 +101,9 @@ project's headline concept. Because the public series use different units and
 deflator bases, the comparison chart indexes each series to its first observation
 rather than plotting all lines as directly comparable dollar levels.
 
+The public proxy summary table reports each series over its available full span
+and over the shared overlap window across all four public proxies.
+
 ## Planned sensitivity toggles
 
 The final project should show multiple versions rather than pretending there is one perfect number.

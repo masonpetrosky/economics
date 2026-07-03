@@ -184,6 +184,21 @@ outputs/charts/public_proxy_comparison.png
 This chart indexes each series to its first observation. That avoids presenting
 different deflator bases as directly comparable dollar levels.
 
+## Build the public proxy summary table
+
+```bash
+python scripts/build_public_proxy_summary.py
+```
+
+The table will be saved to:
+
+```text
+outputs/tables/public_proxy_summary.csv
+```
+
+It includes full-span growth for each series and common-overlap growth across all
+four public proxies.
+
 ## Current starter files
 
 ```text
@@ -193,6 +208,7 @@ src/economics/metrics.py
 scripts/plot_cbo_proxy.py
 scripts/build_cbo_proxy.py
 scripts/build_fred_comparisons.py
+scripts/build_public_proxy_summary.py
 scripts/plot_public_proxies.py
 data/processed/cbo_proxy_median_adjusted_income_after_tax_transfer.csv
 data/processed/fred_real_median_personal_income.csv
