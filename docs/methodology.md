@@ -133,12 +133,13 @@ to the previous calendar year, the bridge maps survey `YEAR` to income-reference
 `year` by subtracting one.
 
 The current toggles cover realized capital gains, health-insurance value, and
-all-persons versus adult-only populations. The starter raw bridge fills noncash
-benefits and health-insurance value with zero until a reviewed valuation is
-added. Output built from fixtures, handmade demo files, or the starter raw bridge
-is not research evidence; publication-quality interpretation requires a real CPS
-ASEC/IPUMS extract, reviewed resource-unit allocation, and reviewed tax and
-benefit mappings.
+all-persons versus adult-only populations. For starter raw-IPUMS runs, the
+builder defaults to excluding realized capital gains because `CAPGAIN` is
+unavailable after ASEC 2008, and it excludes health-insurance value because the
+starter bridge fills that component with zero until a reviewed valuation is
+added. Output from the starter raw bridge is useful for pipeline validation but
+still requires reviewed resource-unit allocation and reviewed tax and benefit
+mappings before publication-quality interpretation.
 
 ## Research questions
 

@@ -238,13 +238,20 @@ inspection:
 ```bash
 python scripts/build_cps_ipums_demo.py \
   --input-format ipums \
-  --normalized-out data/interim/ipums_cps_asec_extract.csv
+  --normalized-out data/interim/ipums_cps_asec_extract.csv \
+  --preflight-out data/processed/cps_ipums_preflight_summary.csv
 ```
+
+For IPUMS-format input, the builder defaults to excluding realized capital gains
+because IPUMS CPS `CAPGAIN` is unavailable after ASEC 2008. It also defaults to
+excluding health-insurance value because the starter raw bridge currently
+zero-fills that component until a reviewed valuation mapping is added.
 
 The script writes:
 
 ```text
 data/processed/cps_ipums_median_adult_equivalent_resources.csv
+data/processed/cps_ipums_preflight_summary.csv
 ```
 
 Until the raw extract, resource-unit mapping, noncash benefits, health benefits,

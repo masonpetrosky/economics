@@ -17,6 +17,18 @@ from economics.series import weighted_median
 DEFAULT_CPS_SERIES = "Median adult-equivalent disposable resources"
 DEFAULT_CPS_SOURCE = "CPS ASEC/IPUMS normalized extract"
 DEFAULT_CPS_NOTES = "Fixture/demo output until built from a real IPUMS extract."
+IPUMS_CPS_SOURCE = "IPUMS CPS ASEC rectangularized extract"
+IPUMS_CPS_NOTES_WITHOUT_CAPITAL_GAINS = (
+    "Built from a rectangularized IPUMS CPS ASEC extract. The starter bridge "
+    "zero-fills noncash benefits and health-insurance value, and this output "
+    "excludes realized capital gains because CAPGAIN is unavailable after 2008. "
+    "Review the preflight summary before interpreting row retention."
+)
+IPUMS_CPS_NOTES_WITH_CAPITAL_GAINS = (
+    "Built from a rectangularized IPUMS CPS ASEC extract. The starter bridge "
+    "zero-fills noncash benefits and health-insurance value. CAPGAIN is only "
+    "available through ASEC 2008 in IPUMS CPS."
+)
 VALID_POPULATIONS = ("all", "adults")
 RESOURCE_COMPONENT_COLUMNS = (
     "money_income",
@@ -195,6 +207,17 @@ def _raise_if_duplicate_person_rows(df: pd.DataFrame) -> None:
     raise ValueError(f"Duplicate CPS person rows for key(s): {key_details}")
 
 
+def _empty_year_summary(df: pd.DataFrame) -> pd.DataFrame:
+    years = (
+        pd.to_numeric(df["year"], errors="coerce")
+        .dropna()
+        .astype(int)
+        .sort_values()
+        .unique()
+    )
+    return pd.DataFrame({"year": years})
+
+
 def validate_cps_columns(
     df: pd.DataFrame,
     source_label: str = "CPS/IPUMS input",
@@ -243,6 +266,70 @@ def normalize_ipums_cps_asec_extract(
     )
     validate_cps_columns(out, source_label="Normalized IPUMS CPS ASEC extract")
     return out[list(CPS_IPUMS_REQUIRED_COLUMNS)].reset_index(drop=True)
+
+
+def summarize_cps_preflight(
+    df: pd.DataFrame,
+    variant: CpsVariant = DEFAULT_CPS_VARIANT,
+) -> pd.DataFrame:
+    """Return per-year row, missingness, duplicate, and filter-attrition checks."""
+
+    validate_cps_columns(df)
+    work = df.copy()
+    work["year"] = pd.to_numeric(work["year"], errors="coerce")
+    work = work.dropna(subset=["year"])
+    if work.empty:
+        raise ValueError("No CPS rows contain a valid year")
+    work["year"] = work["year"].astype(int)
+
+    for column in (*BASE_NUMERIC_COLUMNS, *RESOURCE_COMPONENT_COLUMNS):
+        work[column] = pd.to_numeric(work[column], errors="coerce")
+
+    summary = _empty_year_summary(work)
+    yearly = work.groupby("year", sort=True)
+    summary = summary.merge(yearly.size().rename("input_rows"), on="year", how="left")
+
+    duplicate_mask = work.duplicated(subset=CPS_PERSON_KEY_COLUMNS, keep=False)
+    duplicate_rows = duplicate_mask.groupby(work["year"]).sum().rename("duplicate_person_key_rows")
+    summary = summary.merge(duplicate_rows, on="year", how="left")
+
+    bad_weight = ((work["asecwt"].isna()) | (work["asecwt"] <= 0)).groupby(work["year"]).sum()
+    bad_hh_size = (
+        ((work["household_size"].isna()) | (work["household_size"] <= 0))
+        .groupby(work["year"])
+        .sum()
+    )
+    summary = summary.merge(bad_weight.rename("bad_weight_rows"), on="year", how="left")
+    summary = summary.merge(bad_hh_size.rename("bad_household_size_rows"), on="year", how="left")
+
+    for column in RESOURCE_COMPONENT_COLUMNS:
+        missing = work[column].isna().groupby(work["year"]).sum()
+        summary = summary.merge(missing.rename(f"missing_{column}_rows"), on="year", how="left")
+
+    if variant.population == "adults":
+        population = work[work["age"] >= variant.adult_age_min]
+    else:
+        population = work
+    population_rows = population.groupby("year").size().rename("population_rows")
+    summary = summary.merge(population_rows, on="year", how="left")
+
+    required_numeric_columns = _required_numeric_columns(variant)
+    estimation = work.dropna(subset=required_numeric_columns)
+    estimation = estimation[(estimation["asecwt"] > 0) & (estimation["household_size"] > 0)]
+    if variant.population == "adults":
+        estimation = estimation[estimation["age"] >= variant.adult_age_min]
+
+    estimation_rows = estimation.groupby("year").size().rename("estimation_rows")
+    summary = summary.merge(estimation_rows, on="year", how="left")
+    summary = summary.fillna(0)
+    integer_columns = [column for column in summary.columns if column.endswith("_rows")]
+    summary[integer_columns] = summary[integer_columns].astype(int)
+    summary["input_rows"] = summary["input_rows"].astype(int)
+    summary["estimation_rows_pct"] = (
+        summary["estimation_rows"] / summary["population_rows"] * 100
+    ).round(2)
+    summary["variant"] = variant.label
+    return summary.sort_values("year").reset_index(drop=True)
 
 
 def build_cps_person_resources(

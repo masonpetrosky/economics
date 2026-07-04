@@ -242,6 +242,15 @@ Mapping into the normalized contract:
 The normalizer treats the documented IPUMS not-in-universe codes for `HHINCOME`,
 `CAPGAIN`, `FEDTAX`, `FICA`, and `STATETAX` as missing values before the
 estimator filters invalid rows. It does not treat top-coded values as missing.
+For full-span 1992-present runs, the project builder excludes realized capital
+gains by default because IPUMS CPS `CAPGAIN` is unavailable after ASEC 2008. It
+also excludes health-insurance value by default for starter raw-IPUMS runs
+because the bridge currently zero-fills that component.
+
+The optional preflight summary written to
+`data/processed/cps_ipums_preflight_summary.csv` reports per-year input rows,
+duplicate person-key rows, invalid weights or household sizes, component
+missingness, and rows retained for the selected estimator variant.
 
 Relevant IPUMS documentation:
 

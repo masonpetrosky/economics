@@ -12,6 +12,7 @@ from economics.cps import (
     build_cps_person_resources,
     estimate_cps_annual_medians,
     normalize_ipums_cps_asec_extract,
+    summarize_cps_preflight,
     validate_cps_columns,
 )
 from economics.paths import repo_root
@@ -279,6 +280,51 @@ def test_cps_variant_rejects_unknown_population() -> None:
         CpsVariant(population="children")
 
 
+def test_summarize_cps_preflight_reports_missingness_duplicates_and_attrition() -> None:
+    df = pd.concat([cps_fixture(), cps_fixture().iloc[[1]]], ignore_index=True)
+    df.loc[df["year"] == 2021, "realized_capital_gains"] = pd.NA
+    df.loc[df["year"] == 2021, "asecwt"] = 0
+
+    summary = summarize_cps_preflight(df, CpsVariant(include_capital_gains=False))
+
+    assert summary[
+        [
+            "year",
+            "input_rows",
+            "duplicate_person_key_rows",
+            "bad_weight_rows",
+            "missing_realized_capital_gains_rows",
+            "population_rows",
+            "estimation_rows",
+            "estimation_rows_pct",
+            "variant",
+        ]
+    ].to_dict("records") == [
+        {
+            "year": 2020,
+            "input_rows": 3,
+            "duplicate_person_key_rows": 2,
+            "bad_weight_rows": 0,
+            "missing_realized_capital_gains_rows": 0,
+            "population_rows": 3,
+            "estimation_rows": 3,
+            "estimation_rows_pct": 100.0,
+            "variant": "all_without_capital_gains_with_health_insurance",
+        },
+        {
+            "year": 2021,
+            "input_rows": 1,
+            "duplicate_person_key_rows": 0,
+            "bad_weight_rows": 1,
+            "missing_realized_capital_gains_rows": 1,
+            "population_rows": 1,
+            "estimation_rows": 0,
+            "estimation_rows_pct": 0.0,
+            "variant": "all_without_capital_gains_with_health_insurance",
+        },
+    ]
+
+
 def ipums_raw_fixture() -> pd.DataFrame:
     return pd.DataFrame(
         [
@@ -415,6 +461,7 @@ def test_build_cps_ipums_demo_script_writes_processed_csv(tmp_path: Path) -> Non
 def test_build_cps_ipums_demo_script_normalizes_ipums_raw_extract(tmp_path: Path) -> None:
     raw_csv = tmp_path / "ipums_cps_asec_raw.csv"
     normalized_csv = tmp_path / "normalized.csv"
+    preflight_csv = tmp_path / "preflight.csv"
     out_csv = tmp_path / "processed.csv"
     write_ipums_raw_fixture_csv(raw_csv)
 
@@ -428,6 +475,8 @@ def test_build_cps_ipums_demo_script_normalizes_ipums_raw_extract(tmp_path: Path
             str(raw_csv),
             "--normalized-out",
             str(normalized_csv),
+            "--preflight-out",
+            str(preflight_csv),
             "--out",
             str(out_csv),
         ],
@@ -438,13 +487,25 @@ def test_build_cps_ipums_demo_script_normalizes_ipums_raw_extract(tmp_path: Path
     )
 
     normalized = pd.read_csv(normalized_csv)
+    preflight = pd.read_csv(preflight_csv)
     output = pd.read_csv(out_csv)
 
     assert "Wrote 2 normalized CPS/IPUMS rows" in result.stdout
+    assert "Wrote 2 CPS/IPUMS preflight rows" in result.stdout
     assert "Wrote 2 CPS/IPUMS median rows" in result.stdout
     assert normalized["year"].tolist() == [2020, 2021]
     assert normalized["household_size"].tolist() == [2, 4]
-    assert output["value"].tolist() == [pytest.approx(53_033.008589), 53_000.0]
+    assert preflight["input_rows"].tolist() == [1, 1]
+    assert output["value"].tolist() == [pytest.approx(49_497.474683), 53_000.0]
+    assert output["variant"].unique().tolist() == [
+        "all_without_capital_gains_without_health_insurance"
+    ]
+    assert output["notes"].unique().tolist() == [
+        "Built from a rectangularized IPUMS CPS ASEC extract. The starter bridge "
+        "zero-fills noncash benefits and health-insurance value, and this output "
+        "excludes realized capital gains because CAPGAIN is unavailable after 2008. "
+        "Review the preflight summary before interpreting row retention."
+    ]
 
 
 def test_build_cps_ipums_demo_script_reports_missing_raw_file(tmp_path: Path) -> None:

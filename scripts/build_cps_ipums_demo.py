@@ -23,6 +23,9 @@ DEFAULT_OUT = (
     / "processed"
     / "cps_ipums_median_adult_equivalent_resources.csv"
 )
+DEFAULT_PREFLIGHT_OUT = (
+    REPO_ROOT / "data" / "processed" / "cps_ipums_preflight_summary.csv"
+)
 
 
 def _add_src_to_path() -> None:
@@ -64,6 +67,15 @@ def parse_args() -> argparse.Namespace:
         help="Optional path to write normalized person rows before estimating medians.",
     )
     parser.add_argument(
+        "--preflight-out",
+        type=Path,
+        default=None,
+        help=(
+            "Optional path to write per-year CPS/IPUMS QA summary. "
+            f"Suggested path: {DEFAULT_PREFLIGHT_OUT}"
+        ),
+    )
+    parser.add_argument(
         "--out",
         type=Path,
         default=DEFAULT_OUT,
@@ -75,17 +87,82 @@ def parse_args() -> argparse.Namespace:
         default="all",
         help="Population filter for the median estimate. Default: all",
     )
-    parser.add_argument(
+    capital_gains_group = parser.add_mutually_exclusive_group()
+    capital_gains_group.add_argument(
+        "--include-capital-gains",
+        action="store_true",
+        help=(
+            "Include CAPGAIN. For IPUMS-format input, use only when selected years "
+            "end by ASEC 2008."
+        ),
+    )
+    capital_gains_group.add_argument(
         "--exclude-capital-gains",
         action="store_true",
-        help="Exclude realized capital gains from resources.",
+        help=(
+            "Exclude realized capital gains from resources. This is the default for "
+            "IPUMS-format input because CAPGAIN is unavailable after ASEC 2008."
+        ),
     )
-    parser.add_argument(
+    health_group = parser.add_mutually_exclusive_group()
+    health_group.add_argument(
+        "--include-health-insurance",
+        action="store_true",
+        help=(
+            "Include health_insurance_value. For IPUMS-format input, this uses the "
+            "starter bridge's zero-filled value unless a custom mapping is added."
+        ),
+    )
+    health_group.add_argument(
         "--exclude-health-insurance",
         action="store_true",
-        help="Exclude health insurance value from resources.",
+        help=(
+            "Exclude health insurance value from resources. This is the default for "
+            "IPUMS-format input because the starter bridge zero-fills it."
+        ),
     )
     return parser.parse_args()
+
+
+def _variant_from_args(args: argparse.Namespace) -> object:
+    """Build a CPS variant, with safer defaults for IPUMS-format input."""
+
+    from economics.cps import CpsVariant
+
+    if args.input_format == "ipums":
+        include_capital_gains = args.include_capital_gains
+        include_health_insurance = args.include_health_insurance
+    else:
+        include_capital_gains = not args.exclude_capital_gains
+        include_health_insurance = not args.exclude_health_insurance
+
+    return CpsVariant(
+        include_capital_gains=include_capital_gains,
+        include_health_insurance=include_health_insurance,
+        population=args.population,
+    )
+
+
+def _metadata_for_args(args: argparse.Namespace, variant: object) -> tuple[str, str]:
+    """Return source and notes metadata for processed CPS output."""
+
+    from economics.cps import (
+        DEFAULT_CPS_NOTES,
+        DEFAULT_CPS_SOURCE,
+        IPUMS_CPS_NOTES_WITH_CAPITAL_GAINS,
+        IPUMS_CPS_NOTES_WITHOUT_CAPITAL_GAINS,
+        IPUMS_CPS_SOURCE,
+    )
+
+    if args.input_format != "ipums":
+        return DEFAULT_CPS_SOURCE, DEFAULT_CPS_NOTES
+
+    notes = (
+        IPUMS_CPS_NOTES_WITH_CAPITAL_GAINS
+        if variant.include_capital_gains
+        else IPUMS_CPS_NOTES_WITHOUT_CAPITAL_GAINS
+    )
+    return IPUMS_CPS_SOURCE, notes
 
 
 def main() -> int:
@@ -93,9 +170,9 @@ def main() -> int:
 
     _add_src_to_path()
     from economics.cps import (
-        CpsVariant,
         estimate_cps_annual_medians,
         normalize_ipums_cps_asec_extract,
+        summarize_cps_preflight,
     )
 
     args = parse_args()
@@ -117,12 +194,15 @@ def main() -> int:
         raw.to_csv(args.normalized_out, index=False)
         print(f"Wrote {len(raw)} normalized CPS/IPUMS rows to {args.normalized_out}")
 
-    variant = CpsVariant(
-        include_capital_gains=not args.exclude_capital_gains,
-        include_health_insurance=not args.exclude_health_insurance,
-        population=args.population,
-    )
-    output = estimate_cps_annual_medians(raw, variant)
+    variant = _variant_from_args(args)
+    if args.preflight_out is not None:
+        preflight = summarize_cps_preflight(raw, variant)
+        args.preflight_out.parent.mkdir(parents=True, exist_ok=True)
+        preflight.to_csv(args.preflight_out, index=False)
+        print(f"Wrote {len(preflight)} CPS/IPUMS preflight rows to {args.preflight_out}")
+
+    source, notes = _metadata_for_args(args, variant)
+    output = estimate_cps_annual_medians(raw, variant, source=source, notes=notes)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     output.to_csv(args.out, index=False)
     print(f"Wrote {len(output)} CPS/IPUMS median rows to {args.out}")

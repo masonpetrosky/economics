@@ -7,6 +7,7 @@ from economics.cps import (
     build_cps_person_resources,
     estimate_cps_annual_medians,
     normalize_ipums_cps_asec_extract,
+    summarize_cps_preflight,
 )
 from economics.equivalence import equivalize_resources, square_root_equivalence_scale
 from economics.fred import FRED_SERIES, FredSeriesSpec, build_all_fred_series, build_fred_series
@@ -35,6 +36,7 @@ __all__ = [
     "normalize_ipums_cps_asec_extract",
     "real_value",
     "square_root_equivalence_scale",
+    "summarize_cps_preflight",
     "summarize_series",
     "weighted_median",
 ]
