@@ -126,6 +126,18 @@ It validates one row per person, builds disposable-resource components, applies
 the square-root household-size adjustment, and calculates person-weighted annual
 medians.
 
+The starter CPS/IPUMS estimator writes a nominal CPS/IPUMS annual median first.
+That nominal output should not be compared directly with real CBO or FRED
+series. The real CPS/IPUMS build applies the documented annual price index and
+writes a separate real-dollar file with `nominal_value`, `price_index`, and
+`real_base_year` audit columns.
+
+The indexed public-proxy QA table and chart compare the real CPS/IPUMS series
+with CBO and FRED series over their common overlap window, indexing each series
+to the first shared year. This fixes inflation comparability for trend QA, but
+it does not resolve the remaining resource-concept limits around noncash
+benefits, health-insurance value, and reviewed resource-unit treatment.
+
 The starter raw-export bridge can normalize a rectangularized IPUMS CPS ASEC
 file with `YEAR`, `SERIAL`, `PERNUM`, `AGE`, `ASECWT`, `NUMPREC`, `HHINCOME`,
 `CAPGAIN`, `FEDTAX`, `FICA`, and `STATETAX`. Because ASEC income variables refer

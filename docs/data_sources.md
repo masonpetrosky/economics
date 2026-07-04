@@ -158,6 +158,31 @@ Project use:
 
 Documents alternative income definitions that add taxes, earned income credits, realized capital gains/losses, employer-paid health insurance, Medicare/Medicaid valuation, and other noncash benefits.
 
+## Annual price index
+
+Project use:
+
+Converts nominal CPS/IPUMS annual median resources into base-year real dollars.
+The project keeps the price-index input manual so the chosen deflator remains
+explicit.
+
+Expected manual file:
+
+```text
+data/raw/annual_price_index.csv
+```
+
+Required columns:
+
+```text
+year
+price_index
+```
+
+Optional metadata columns such as `series_id`, `series`, `source`, and `notes`
+may be present. The current builder requires only `year` and `price_index`.
+The default real-dollar base year is 2024.
+
 ## CPS ASEC / IPUMS CPS
 
 - Source: IPUMS CPS

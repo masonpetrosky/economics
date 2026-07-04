@@ -98,6 +98,7 @@ data/raw/61911-additional-data-for-researchers.zip
 data/raw/fred_real_median_personal_income.csv
 data/raw/fred_real_median_household_income.csv
 data/raw/fred_real_disposable_personal_income_per_capita.csv
+data/raw/annual_price_index.csv
 data/raw/ipums_cps_asec_raw.csv
 data/raw/ipums_cps_asec_extract.csv
 ```
@@ -158,6 +159,25 @@ data/processed/fred_real_median_personal_income.csv
 data/processed/fred_real_median_household_income.csv
 data/processed/fred_real_disposable_personal_income_per_capita.csv
 ```
+
+## Annual price index for CPS/IPUMS real dollars
+
+The CPS/IPUMS microdata estimator first writes nominal annual medians. To
+compare that trend with real public proxy series, manually provide an annual
+price-index CSV at:
+
+```text
+data/raw/annual_price_index.csv
+```
+
+Required columns:
+
+```text
+year
+price_index
+```
+
+The default real-dollar base year is 2024.
 
 ## Reproduce the CBO proxy chart
 
@@ -255,6 +275,43 @@ The script writes:
 data/processed/cps_ipums_median_adult_equivalent_resources.csv
 data/processed/cps_ipums_preflight_summary.csv
 ```
+
+Build the real-dollar CPS/IPUMS output after providing the annual price-index
+file:
+
+```bash
+python scripts/build_cps_ipums_real.py
+```
+
+The script writes:
+
+```text
+data/processed/cps_ipums_median_adult_equivalent_resources_real.csv
+```
+
+The existing `data/processed/cps_ipums_median_adult_equivalent_resources.csv`
+file remains the nominal CPS/IPUMS output. The real output keeps
+`nominal_value`, `price_index`, and `real_base_year` columns so the inflation
+adjustment is auditable.
+
+## Build the CPS/IPUMS public-proxy QA artifacts
+
+After building the real CPS/IPUMS output, run:
+
+```bash
+python scripts/build_cps_public_proxy_qa.py
+```
+
+The script writes:
+
+```text
+outputs/tables/cps_public_proxy_qa_summary.csv
+outputs/charts/cps_public_proxy_indexed_comparison.png
+```
+
+These QA artifacts index CPS/IPUMS, CBO, and FRED public proxy series to the
+first shared year. They are diagnostics for trend plausibility, not final
+publication charts.
 
 To inspect who the current estimator keeps or drops, run:
 
