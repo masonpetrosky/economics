@@ -173,6 +173,15 @@ Expected normalized manual file:
 data/raw/ipums_cps_asec_extract.csv
 ```
 
+Expected starter raw IPUMS export:
+
+```text
+data/raw/ipums_cps_asec_raw.csv
+```
+
+This file should be a CSV produced after reading the IPUMS extract with the
+provided command file or an equivalent conversion step.
+
 Normalized phase-1 columns:
 
 ```text
@@ -196,10 +205,60 @@ Household or resource-unit values may be repeated across people in the same
 unit so the estimator can compute a person-weighted median without summing
 household values across person rows.
 
+Starter raw IPUMS bridge columns:
+
+```text
+YEAR
+SERIAL
+PERNUM
+AGE
+ASECWT
+NUMPREC
+HHINCOME
+CAPGAIN
+FEDTAX
+FICA
+STATETAX
+```
+
+Mapping into the normalized contract:
+
+| Normalized column | Starter IPUMS source | Notes |
+| --- | --- | --- |
+| `year` | `YEAR - 1` | IPUMS ASEC `YEAR` is the survey year; income variables refer to the previous calendar year. |
+| `serial` | `SERIAL` | With `YEAR` and `PERNUM`, identifies a person record in the rectangularized extract. |
+| `pernum` | `PERNUM` | Person number within household. |
+| `age` | `AGE` | Used for adult-only sensitivity filters. |
+| `asecwt` | `ASECWT` | Person-level ASEC weight. |
+| `household_size` | `NUMPREC` | Number of person records in the household. |
+| `money_income` | `HHINCOME` | Total household money income. |
+| `realized_capital_gains` | `CAPGAIN` | Tax-model capital gains amount. |
+| `noncash_benefits` | none in starter bridge | Filled with `0.0` until a reviewed benefit mapping is added. |
+| `health_insurance_value` | none in starter bridge | Filled with `0.0` until a reviewed health-benefit valuation is added. |
+| `federal_income_taxes` | `FEDTAX` | Federal income tax liability before credits. |
+| `payroll_taxes` | `FICA` | Social Security payroll deduction. |
+| `state_local_income_taxes` | `STATETAX` | State income tax liability before credits. |
+
+The normalizer treats the documented IPUMS not-in-universe codes for `HHINCOME`,
+`CAPGAIN`, `FEDTAX`, `FICA`, and `STATETAX` as missing values before the
+estimator filters invalid rows. It does not treat top-coded values as missing.
+
+Relevant IPUMS documentation:
+
+- Person keys: https://cps.ipums.org/cps-action/faq
+- `ASECWT`: https://cps.ipums.org/cps-action/variables/ASECWT
+- `NUMPREC`: https://cps.ipums.org/cps-action/variables/NUMPREC
+- `HHINCOME`: https://cps.ipums.org/cps-action/variables/HHINCOME
+- `CAPGAIN`: https://cps.ipums.org/cps-action/variables/CAPGAIN
+- `FEDTAX`: https://cps.ipums.org/cps-action/variables/FEDTAX
+- `FICA`: https://cps.ipums.org/cps-action/variables/FICA
+- `STATETAX`: https://cps.ipums.org/cps-action/variables/STATETAX
+
 Future work:
 
 - Pull annual ASEC files.
 - Build consistent resource-unit records.
 - Allocate household resources to persons.
-- Apply tax and transfer adjustments.
+- Add reviewed noncash benefit and health-insurance valuation.
+- Review federal, payroll, and state/local tax treatment before interpreting trends.
 - Calculate weighted medians by year.

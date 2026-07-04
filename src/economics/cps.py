@@ -8,7 +8,10 @@ from dataclasses import dataclass
 import pandas as pd
 
 from economics.equivalence import equivalize_resources
-from economics.loaders import CPS_IPUMS_REQUIRED_COLUMNS, validate_required_columns
+from economics.loaders import (
+    CPS_IPUMS_REQUIRED_COLUMNS,
+    validate_required_columns,
+)
 from economics.series import weighted_median
 
 DEFAULT_CPS_SERIES = "Median adult-equivalent disposable resources"
@@ -38,6 +41,58 @@ ALWAYS_INCLUDED_RESOURCE_COMPONENT_COLUMNS = (
     "payroll_taxes",
     "state_local_income_taxes",
 )
+IPUMS_CPS_ASEC_NIU_CODES = {
+    "HHINCOME": (99_999_999,),
+    "CAPGAIN": (99_999,),
+    "FEDTAX": (99_999_999,),
+    "FICA": (99_999,),
+    "STATETAX": (9_999_999,),
+}
+
+
+@dataclass(frozen=True)
+class IpumsCpsAsecMapping:
+    """Column mapping from a rectangularized IPUMS CPS ASEC extract."""
+
+    survey_year: str = "YEAR"
+    serial: str = "SERIAL"
+    pernum: str = "PERNUM"
+    age: str = "AGE"
+    asecwt: str = "ASECWT"
+    household_size: str = "NUMPREC"
+    money_income: str = "HHINCOME"
+    realized_capital_gains: str = "CAPGAIN"
+    federal_income_taxes: str = "FEDTAX"
+    payroll_taxes: str = "FICA"
+    state_local_income_taxes: str = "STATETAX"
+    noncash_benefits: str | None = None
+    health_insurance_value: str | None = None
+    income_year_offset: int = -1
+
+    @property
+    def required_columns(self) -> tuple[str, ...]:
+        """Return the raw columns needed for this mapping."""
+
+        columns = (
+            self.survey_year,
+            self.serial,
+            self.pernum,
+            self.age,
+            self.asecwt,
+            self.household_size,
+            self.money_income,
+            self.realized_capital_gains,
+            self.federal_income_taxes,
+            self.payroll_taxes,
+            self.state_local_income_taxes,
+            self.noncash_benefits,
+            self.health_insurance_value,
+        )
+        return tuple(column for column in columns if column is not None)
+
+
+DEFAULT_IPUMS_CPS_ASEC_MAPPING = IpumsCpsAsecMapping()
+
 
 @dataclass(frozen=True)
 class CpsVariant:
@@ -70,6 +125,23 @@ class CpsVariant:
 
 
 DEFAULT_CPS_VARIANT = CpsVariant()
+
+
+def _read_ipums_numeric_column(df: pd.DataFrame, column: str) -> pd.Series:
+    values = pd.to_numeric(df[column], errors="coerce")
+    niu_codes = IPUMS_CPS_ASEC_NIU_CODES.get(column.upper(), ())
+    if niu_codes:
+        values = values.mask(values.isin(niu_codes))
+    return values
+
+
+def _read_optional_ipums_numeric_column(
+    df: pd.DataFrame,
+    column: str | None,
+) -> pd.Series:
+    if column is None:
+        return pd.Series(0.0, index=df.index)
+    return _read_ipums_numeric_column(df, column)
 
 
 def _required_numeric_columns(variant: CpsVariant) -> tuple[str, ...]:
@@ -131,6 +203,46 @@ def validate_cps_columns(
     """Raise a clear error if normalized CPS/IPUMS input lacks required columns."""
 
     validate_required_columns(df, required_columns, source_label)
+
+
+def normalize_ipums_cps_asec_extract(
+    df: pd.DataFrame,
+    mapping: IpumsCpsAsecMapping = DEFAULT_IPUMS_CPS_ASEC_MAPPING,
+    source_label: str = "Raw IPUMS CPS ASEC extract",
+) -> pd.DataFrame:
+    """Normalize a rectangularized IPUMS CPS ASEC extract into the project contract."""
+
+    validate_required_columns(df, mapping.required_columns, source_label)
+    survey_year = _read_ipums_numeric_column(df, mapping.survey_year)
+    out = pd.DataFrame(
+        {
+            "year": survey_year + mapping.income_year_offset,
+            "serial": _read_ipums_numeric_column(df, mapping.serial),
+            "pernum": _read_ipums_numeric_column(df, mapping.pernum),
+            "age": _read_ipums_numeric_column(df, mapping.age),
+            "asecwt": _read_ipums_numeric_column(df, mapping.asecwt),
+            "household_size": _read_ipums_numeric_column(df, mapping.household_size),
+            "money_income": _read_ipums_numeric_column(df, mapping.money_income),
+            "realized_capital_gains": _read_ipums_numeric_column(
+                df, mapping.realized_capital_gains
+            ),
+            "noncash_benefits": _read_optional_ipums_numeric_column(
+                df, mapping.noncash_benefits
+            ),
+            "health_insurance_value": _read_optional_ipums_numeric_column(
+                df, mapping.health_insurance_value
+            ),
+            "federal_income_taxes": _read_ipums_numeric_column(
+                df, mapping.federal_income_taxes
+            ),
+            "payroll_taxes": _read_ipums_numeric_column(df, mapping.payroll_taxes),
+            "state_local_income_taxes": _read_ipums_numeric_column(
+                df, mapping.state_local_income_taxes
+            ),
+        }
+    )
+    validate_cps_columns(out, source_label="Normalized IPUMS CPS ASEC extract")
+    return out[list(CPS_IPUMS_REQUIRED_COLUMNS)].reset_index(drop=True)
 
 
 def build_cps_person_resources(

@@ -98,6 +98,7 @@ data/raw/61911-additional-data-for-researchers.zip
 data/raw/fred_real_median_personal_income.csv
 data/raw/fred_real_median_household_income.csv
 data/raw/fred_real_disposable_personal_income_per_capita.csv
+data/raw/ipums_cps_asec_raw.csv
 data/raw/ipums_cps_asec_extract.csv
 ```
 
@@ -202,8 +203,10 @@ four public proxies.
 
 ## Build the CPS/IPUMS demo microdata estimate
 
-Phase 1 of the custom microdata path expects a manually prepared normalized
-CPS ASEC/IPUMS extract at:
+The custom microdata path accepts either a manually prepared normalized
+CPS ASEC/IPUMS extract or a starter rectangularized IPUMS CPS ASEC export.
+
+The normalized extract path is:
 
 ```text
 data/raw/ipums_cps_asec_extract.csv
@@ -213,10 +216,29 @@ The normalized extract is one row per person and uses income-reference `year`,
 person weight `asecwt`, `household_size`, and named resource and tax component
 columns documented in `docs/data_sources.md`.
 
-Run:
+Run the normalized workflow:
 
 ```bash
 python scripts/build_cps_ipums_demo.py
+```
+
+The starter IPUMS export path is:
+
+```text
+data/raw/ipums_cps_asec_raw.csv
+```
+
+The starter raw bridge expects the official uppercase IPUMS variables `YEAR`,
+`SERIAL`, `PERNUM`, `AGE`, `ASECWT`, `NUMPREC`, `HHINCOME`, `CAPGAIN`,
+`FEDTAX`, `FICA`, and `STATETAX`. It maps ASEC survey `YEAR` to income
+reference `year` by subtracting one, fills the not-yet-modeled noncash and
+health-insurance components with zero, and writes optional normalized rows for
+inspection:
+
+```bash
+python scripts/build_cps_ipums_demo.py \
+  --input-format ipums \
+  --normalized-out data/interim/ipums_cps_asec_extract.csv
 ```
 
 The script writes:
@@ -225,8 +247,9 @@ The script writes:
 data/processed/cps_ipums_median_adult_equivalent_resources.csv
 ```
 
-Until the input is built from a real CPS ASEC/IPUMS extract, this workflow is a
-schema and estimator demonstration rather than research evidence.
+Until the raw extract, resource-unit mapping, noncash benefits, health benefits,
+and tax treatment are reviewed, this workflow is a schema and estimator
+demonstration rather than research evidence.
 
 ## Current starter files
 

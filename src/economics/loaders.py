@@ -24,6 +24,19 @@ CPS_IPUMS_REQUIRED_COLUMNS = (
     "payroll_taxes",
     "state_local_income_taxes",
 )
+IPUMS_CPS_ASEC_RAW_REQUIRED_COLUMNS = (
+    "YEAR",
+    "SERIAL",
+    "PERNUM",
+    "AGE",
+    "ASECWT",
+    "NUMPREC",
+    "HHINCOME",
+    "CAPGAIN",
+    "FEDTAX",
+    "FICA",
+    "STATETAX",
+)
 
 
 @dataclass(frozen=True)
@@ -50,6 +63,14 @@ RAW_SOURCE_FILE_SPECS: dict[str, SourceFileSpec] = {
         description=(
             "Normalized CPS ASEC/IPUMS person-level extract for custom "
             "adult-equivalent disposable-resource estimates."
+        ),
+    ),
+    "ipums_cps_asec_raw_extract": SourceFileSpec(
+        file_name="ipums_cps_asec_raw.csv",
+        required_columns=IPUMS_CPS_ASEC_RAW_REQUIRED_COLUMNS,
+        description=(
+            "Rectangularized IPUMS CPS ASEC extract with official uppercase IPUMS "
+            "columns that can be normalized into the project CPS contract."
         ),
     ),
     "fred_real_median_personal_income": SourceFileSpec(

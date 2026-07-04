@@ -118,7 +118,7 @@ Suggested toggles:
 6. Federal-only taxes versus federal + state/local taxes.
 7. Household ranking versus person-weighted ranking.
 
-## CPS/IPUMS phase-1 estimator boundary
+## CPS/IPUMS estimator and raw-export bridge boundary
 
 The first custom microdata implementation uses a normalized CPS ASEC/IPUMS-shaped
 person file to prove the estimator contract before depending on a real extract.
@@ -126,10 +126,19 @@ It validates one row per person, builds disposable-resource components, applies
 the square-root household-size adjustment, and calculates person-weighted annual
 medians.
 
-The phase-1 toggles cover realized capital gains, health-insurance value, and
-all-persons versus adult-only populations. Output built from fixtures or
-handmade demo files is not research evidence; publication-quality interpretation
-requires a real CPS ASEC/IPUMS extract and a reviewed variable mapping.
+The starter raw-export bridge can normalize a rectangularized IPUMS CPS ASEC
+file with `YEAR`, `SERIAL`, `PERNUM`, `AGE`, `ASECWT`, `NUMPREC`, `HHINCOME`,
+`CAPGAIN`, `FEDTAX`, `FICA`, and `STATETAX`. Because ASEC income variables refer
+to the previous calendar year, the bridge maps survey `YEAR` to income-reference
+`year` by subtracting one.
+
+The current toggles cover realized capital gains, health-insurance value, and
+all-persons versus adult-only populations. The starter raw bridge fills noncash
+benefits and health-insurance value with zero until a reviewed valuation is
+added. Output built from fixtures, handmade demo files, or the starter raw bridge
+is not research evidence; publication-quality interpretation requires a real CPS
+ASEC/IPUMS extract, reviewed resource-unit allocation, and reviewed tax and
+benefit mappings.
 
 ## Research questions
 

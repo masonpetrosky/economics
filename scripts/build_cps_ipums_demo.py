@@ -1,4 +1,4 @@
-"""Build a CPS/IPUMS median resources CSV from a normalized manual extract.
+"""Build a CPS/IPUMS median resources CSV from a manual extract.
 
 Run from the repo root:
 
@@ -15,7 +15,8 @@ import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_PATH = REPO_ROOT / "src"
-DEFAULT_RAW_CSV = REPO_ROOT / "data" / "raw" / "ipums_cps_asec_extract.csv"
+DEFAULT_NORMALIZED_RAW_CSV = REPO_ROOT / "data" / "raw" / "ipums_cps_asec_extract.csv"
+DEFAULT_IPUMS_RAW_CSV = REPO_ROOT / "data" / "raw" / "ipums_cps_asec_raw.csv"
 DEFAULT_OUT = (
     REPO_ROOT
     / "data"
@@ -35,13 +36,32 @@ def parse_args() -> argparse.Namespace:
     """Parse CLI arguments."""
 
     parser = argparse.ArgumentParser(
-        description="Build CPS/IPUMS median adult-equivalent resources from normalized input."
+        description="Build CPS/IPUMS median adult-equivalent resources from manual input."
+    )
+    parser.add_argument(
+        "--input-format",
+        choices=["normalized", "ipums"],
+        default="normalized",
+        help=(
+            "Input schema. Use 'normalized' for the project contract or 'ipums' for "
+            "the documented rectangularized IPUMS CPS ASEC export. Default: normalized"
+        ),
     )
     parser.add_argument(
         "--raw-csv",
         type=Path,
-        default=DEFAULT_RAW_CSV,
-        help=f"Normalized CPS/IPUMS input CSV. Default: {DEFAULT_RAW_CSV}",
+        default=None,
+        help=(
+            "Manual input CSV. Defaults to "
+            f"{DEFAULT_NORMALIZED_RAW_CSV} for normalized input or {DEFAULT_IPUMS_RAW_CSV} "
+            "for IPUMS input."
+        ),
+    )
+    parser.add_argument(
+        "--normalized-out",
+        type=Path,
+        default=None,
+        help="Optional path to write normalized person rows before estimating medians.",
     )
     parser.add_argument(
         "--out",
@@ -72,14 +92,31 @@ def main() -> int:
     """Run the CPS/IPUMS build."""
 
     _add_src_to_path()
-    from economics.cps import CpsVariant, estimate_cps_annual_medians
+    from economics.cps import (
+        CpsVariant,
+        estimate_cps_annual_medians,
+        normalize_ipums_cps_asec_extract,
+    )
 
     args = parse_args()
-    if not args.raw_csv.exists():
-        print(f"Expected CPS/IPUMS input file not found: {args.raw_csv}", file=sys.stderr)
+    raw_csv = args.raw_csv or (
+        DEFAULT_IPUMS_RAW_CSV
+        if args.input_format == "ipums"
+        else DEFAULT_NORMALIZED_RAW_CSV
+    )
+    if not raw_csv.exists():
+        print(f"Expected CPS/IPUMS input file not found: {raw_csv}", file=sys.stderr)
         return 1
 
-    raw = pd.read_csv(args.raw_csv)
+    raw = pd.read_csv(raw_csv)
+    if args.input_format == "ipums":
+        raw = normalize_ipums_cps_asec_extract(raw)
+
+    if args.normalized_out is not None:
+        args.normalized_out.parent.mkdir(parents=True, exist_ok=True)
+        raw.to_csv(args.normalized_out, index=False)
+        print(f"Wrote {len(raw)} normalized CPS/IPUMS rows to {args.normalized_out}")
+
     variant = CpsVariant(
         include_capital_gains=not args.exclude_capital_gains,
         include_health_insurance=not args.exclude_health_insurance,
