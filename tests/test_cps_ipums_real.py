@@ -85,6 +85,8 @@ def test_build_cps_ipums_real_script_writes_real_output(tmp_path: Path) -> None:
         },
     ]
     assert "Converted to 2024 real dollars" in out["notes"].iloc[0]
+    assert str(price_index_csv) not in out["notes"].iloc[0]
+    assert "annual_price_index.csv" in out["notes"].iloc[0]
 
 
 def test_build_cps_ipums_real_script_reports_missing_price_index(tmp_path: Path) -> None:

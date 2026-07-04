@@ -30,6 +30,13 @@ DEFAULT_OUT = (
 )
 
 
+def _display_source_path(path: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(REPO_ROOT))
+    except ValueError:
+        return path.name
+
+
 def _add_src_to_path() -> None:
     """Allow direct script execution without requiring package installation."""
 
@@ -98,9 +105,10 @@ def main() -> int:
         base_year=args.base_year,
     )
     if "notes" in output.columns:
+        price_index_source = _display_source_path(args.price_index_csv)
         output["notes"] = (
             output["notes"].astype(str)
-            + f" Converted to {args.base_year} real dollars using {args.price_index_csv}."
+            + f" Converted to {args.base_year} real dollars using {price_index_source}."
         )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
