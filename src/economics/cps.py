@@ -20,14 +20,16 @@ DEFAULT_CPS_NOTES = "Fixture/demo output until built from a real IPUMS extract."
 IPUMS_CPS_SOURCE = "IPUMS CPS ASEC rectangularized extract"
 IPUMS_CPS_NOTES_WITHOUT_CAPITAL_GAINS = (
     "Built from a rectangularized IPUMS CPS ASEC extract. The starter bridge "
-    "zero-fills noncash benefits and health-insurance value, and this output "
-    "excludes realized capital gains because CAPGAIN is unavailable after 2008. "
-    "Review the preflight summary before interpreting row retention."
+    "zero-fills noncash benefits and health-insurance value, sums tax-unit "
+    "tax components to household totals, and excludes realized capital gains "
+    "because CAPGAIN is unavailable after 2008. Review the preflight summary "
+    "before interpreting row retention."
 )
 IPUMS_CPS_NOTES_WITH_CAPITAL_GAINS = (
     "Built from a rectangularized IPUMS CPS ASEC extract. The starter bridge "
-    "zero-fills noncash benefits and health-insurance value. CAPGAIN is only "
-    "available through ASEC 2008 in IPUMS CPS."
+    "zero-fills noncash benefits and health-insurance value and sums tax-unit "
+    "components to household totals. CAPGAIN is only available through ASEC "
+    "2008 in IPUMS CPS."
 )
 VALID_POPULATIONS = ("all", "adults")
 RESOURCE_COMPONENT_COLUMNS = (
@@ -39,13 +41,26 @@ RESOURCE_COMPONENT_COLUMNS = (
     "payroll_taxes",
     "state_local_income_taxes",
 )
+TAX_UNIT_RESOURCE_COMPONENT_COLUMNS = (
+    "realized_capital_gains",
+    "federal_income_taxes",
+    "payroll_taxes",
+    "state_local_income_taxes",
+)
 BASE_NUMERIC_COLUMNS = (
     "year",
     "age",
     "asecwt",
     "household_size",
 )
+ATTRITION_SEGMENT_COLUMNS = (
+    "overall",
+    "age_group",
+    "household_size_bucket",
+    "money_income_bucket",
+)
 CPS_PERSON_KEY_COLUMNS = ("year", "serial", "pernum")
+HOUSEHOLD_KEY_COLUMNS = ("year", "serial")
 ALWAYS_INCLUDED_RESOURCE_COMPONENT_COLUMNS = (
     "money_income",
     "noncash_benefits",
@@ -218,6 +233,141 @@ def _empty_year_summary(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame({"year": years})
 
 
+def _population_mask(df: pd.DataFrame, variant: CpsVariant) -> pd.Series:
+    if variant.population == "adults":
+        return df["age"] >= variant.adult_age_min
+    return pd.Series(True, index=df.index)
+
+
+def _age_groups(age: pd.Series) -> pd.Series:
+    values = pd.to_numeric(age, errors="coerce")
+    labels = pd.Series("missing", index=age.index, dtype="object")
+    labels.loc[values < 18] = "under_18"
+    labels.loc[(values >= 18) & (values <= 24)] = "18_24"
+    labels.loc[(values >= 25) & (values <= 44)] = "25_44"
+    labels.loc[(values >= 45) & (values <= 64)] = "45_64"
+    labels.loc[values >= 65] = "65_plus"
+    return labels
+
+
+def _household_size_buckets(household_size: pd.Series) -> pd.Series:
+    values = pd.to_numeric(household_size, errors="coerce")
+    labels = pd.Series("missing_or_invalid", index=household_size.index, dtype="object")
+    labels.loc[values == 1] = "1"
+    labels.loc[values == 2] = "2"
+    labels.loc[values == 3] = "3"
+    labels.loc[values == 4] = "4"
+    labels.loc[values >= 5] = "5_plus"
+    return labels
+
+
+def _money_income_buckets(money_income: pd.Series) -> pd.Series:
+    values = pd.to_numeric(money_income, errors="coerce")
+    labels = pd.Series("missing", index=money_income.index, dtype="object")
+    labels.loc[values < 0] = "negative"
+    labels.loc[values == 0] = "0"
+    labels.loc[(values > 0) & (values < 25_000)] = "1_24999"
+    labels.loc[(values >= 25_000) & (values < 50_000)] = "25000_49999"
+    labels.loc[(values >= 50_000) & (values < 100_000)] = "50000_99999"
+    labels.loc[(values >= 100_000) & (values < 200_000)] = "100000_199999"
+    labels.loc[values >= 200_000] = "200000_plus"
+    return labels
+
+
+def _work_with_numeric_cps_columns(df: pd.DataFrame) -> pd.DataFrame:
+    validate_cps_columns(df)
+    work = df.copy()
+    for column in (*BASE_NUMERIC_COLUMNS, *RESOURCE_COMPONENT_COLUMNS):
+        work[column] = pd.to_numeric(work[column], errors="coerce")
+    work = work.dropna(subset=["year"])
+    if work.empty:
+        raise ValueError("No CPS rows contain a valid year")
+    work["year"] = work["year"].astype(int)
+    return work
+
+
+def _attach_household_tax_unit_totals(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    totals = (
+        out.groupby(list(HOUSEHOLD_KEY_COLUMNS), sort=False)[
+            list(TAX_UNIT_RESOURCE_COMPONENT_COLUMNS)
+        ]
+        .sum(min_count=1)
+        .reset_index()
+    )
+    household_totals = out[list(HOUSEHOLD_KEY_COLUMNS)].merge(
+        totals,
+        on=list(HOUSEHOLD_KEY_COLUMNS),
+        how="left",
+        sort=False,
+    )
+    for column in TAX_UNIT_RESOURCE_COMPONENT_COLUMNS:
+        out[column] = household_totals[column].to_numpy()
+    return out
+
+
+def _summarize_attrition_segment(
+    work: pd.DataFrame,
+    variant: CpsVariant,
+    segment_column: str,
+    segment_type: str,
+) -> pd.DataFrame:
+    group_columns = ["year", segment_column]
+    population_mask = _population_mask(work, variant)
+    bad_weight_mask = work["asecwt"].isna() | (work["asecwt"] <= 0)
+    bad_household_size_mask = work["household_size"].isna() | (work["household_size"] <= 0)
+    missing_age_mask = work["age"].isna()
+    missing_resource_masks = {
+        f"missing_{column}_rows": work[column].isna() for column in RESOURCE_COMPONENT_COLUMNS
+    }
+    required_columns = _required_numeric_columns(variant)
+    missing_required_mask = work[list(required_columns)].isna().any(axis=1)
+    estimation_mask = (
+        population_mask
+        & ~bad_weight_mask
+        & ~bad_household_size_mask
+        & ~missing_required_mask
+    )
+
+    summary = (
+        work.loc[population_mask]
+        .groupby(group_columns)
+        .size()
+        .rename("population_rows")
+        .reset_index()
+    )
+    counts = {
+        "estimation_rows": estimation_mask,
+        "bad_weight_rows": population_mask & bad_weight_mask,
+        "bad_household_size_rows": population_mask & bad_household_size_mask,
+        "missing_age_rows": population_mask & missing_age_mask,
+        "missing_required_value_rows": population_mask & missing_required_mask,
+        **{
+            column: population_mask & mask
+            for column, mask in missing_resource_masks.items()
+        },
+    }
+    for column, mask in counts.items():
+        grouped = (
+            work.loc[mask]
+            .groupby(group_columns)
+            .size()
+            .rename(column)
+            .reset_index()
+        )
+        summary = summary.merge(grouped, on=group_columns, how="left")
+
+    summary = summary.fillna(0)
+    summary["segment_type"] = segment_type
+    summary = summary.rename(columns={segment_column: "segment_value"})
+    summary["dropped_rows"] = summary["population_rows"] - summary["estimation_rows"]
+    summary["retained_pct"] = (
+        summary["estimation_rows"] / summary["population_rows"] * 100
+    ).round(2)
+    summary["variant"] = variant.label
+    return summary
+
+
 def validate_cps_columns(
     df: pd.DataFrame,
     source_label: str = "CPS/IPUMS input",
@@ -265,6 +415,7 @@ def normalize_ipums_cps_asec_extract(
         }
     )
     validate_cps_columns(out, source_label="Normalized IPUMS CPS ASEC extract")
+    out = _attach_household_tax_unit_totals(out)
     return out[list(CPS_IPUMS_REQUIRED_COLUMNS)].reset_index(drop=True)
 
 
@@ -332,6 +483,55 @@ def summarize_cps_preflight(
     return summary.sort_values("year").reset_index(drop=True)
 
 
+def diagnose_cps_estimation_attrition(
+    df: pd.DataFrame,
+    variant: CpsVariant = DEFAULT_CPS_VARIANT,
+) -> pd.DataFrame:
+    """Profile estimator row retention by year and high-signal row segments."""
+
+    work = _work_with_numeric_cps_columns(df)
+    work["overall"] = "all"
+    work["age_group"] = _age_groups(work["age"])
+    work["household_size_bucket"] = _household_size_buckets(work["household_size"])
+    work["money_income_bucket"] = _money_income_buckets(work["money_income"])
+
+    frames = [
+        _summarize_attrition_segment(work, variant, column, column)
+        for column in ATTRITION_SEGMENT_COLUMNS
+    ]
+    out = pd.concat(frames, ignore_index=True)
+    integer_columns = [
+        "population_rows",
+        "estimation_rows",
+        "dropped_rows",
+        "bad_weight_rows",
+        "bad_household_size_rows",
+        "missing_age_rows",
+        "missing_required_value_rows",
+        *(f"missing_{column}_rows" for column in RESOURCE_COMPONENT_COLUMNS),
+    ]
+    out[integer_columns] = out[integer_columns].astype(int)
+    columns = [
+        "year",
+        "segment_type",
+        "segment_value",
+        "population_rows",
+        "estimation_rows",
+        "dropped_rows",
+        "retained_pct",
+        "bad_weight_rows",
+        "bad_household_size_rows",
+        "missing_age_rows",
+        "missing_required_value_rows",
+        *(f"missing_{column}_rows" for column in RESOURCE_COMPONENT_COLUMNS),
+        "variant",
+    ]
+    segment_order = {name: index for index, name in enumerate(ATTRITION_SEGMENT_COLUMNS)}
+    out["_segment_order"] = out["segment_type"].map(segment_order)
+    out = out.sort_values(["year", "_segment_order", "segment_value"]).reset_index(drop=True)
+    return out[columns]
+
+
 def build_cps_person_resources(
     df: pd.DataFrame,
     variant: CpsVariant = DEFAULT_CPS_VARIANT,
@@ -340,13 +540,9 @@ def build_cps_person_resources(
 
     validate_cps_columns(df)
     _raise_if_duplicate_person_rows(df)
-    work = df.copy()
     required_numeric_columns = _required_numeric_columns(variant)
-    work["year"] = pd.to_numeric(work["year"], errors="coerce")
+    work = _work_with_numeric_cps_columns(df)
     input_years = _observed_years(work)
-
-    for column in required_numeric_columns:
-        work[column] = pd.to_numeric(work[column], errors="coerce")
 
     work = work.dropna(subset=required_numeric_columns)
     work = work[(work["asecwt"] > 0) & (work["household_size"] > 0)]

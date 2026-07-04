@@ -245,12 +245,21 @@ estimator filters invalid rows. It does not treat top-coded values as missing.
 For full-span 1992-present runs, the project builder excludes realized capital
 gains by default because IPUMS CPS `CAPGAIN` is unavailable after ASEC 2008. It
 also excludes health-insurance value by default for starter raw-IPUMS runs
-because the bridge currently zero-fills that component.
+because the bridge currently zero-fills that component. The estimator treats
+`FEDTAX`, `FICA`, `STATETAX`, and included `CAPGAIN` values as tax-unit/person
+components, sums them within each `year, serial` household, and assigns the
+household totals to each person before calculating person-weighted medians.
 
 The optional preflight summary written to
 `data/processed/cps_ipums_preflight_summary.csv` reports per-year input rows,
 duplicate person-key rows, invalid weights or household sizes, component
 missingness, and rows retained for the selected estimator variant.
+
+The attrition diagnostic script writes
+`outputs/tables/cps_ipums_attrition_diagnostics.csv`, segmenting estimator
+retention by age group, household-size bucket, and money-income bucket. Use it
+to investigate whether missing tax or resource components are concentrated in a
+specific population before changing estimator policy.
 
 Relevant IPUMS documentation:
 
@@ -269,5 +278,5 @@ Future work:
 - Build consistent resource-unit records.
 - Allocate household resources to persons.
 - Add reviewed noncash benefit and health-insurance valuation.
-- Review federal, payroll, and state/local tax treatment before interpreting trends.
+- Review federal, payroll, and state/local tax-unit treatment before interpreting trends.
 - Calculate weighted medians by year.

@@ -137,9 +137,11 @@ all-persons versus adult-only populations. For starter raw-IPUMS runs, the
 builder defaults to excluding realized capital gains because `CAPGAIN` is
 unavailable after ASEC 2008, and it excludes health-insurance value because the
 starter bridge fills that component with zero until a reviewed valuation is
-added. Output from the starter raw bridge is useful for pipeline validation but
-still requires reviewed resource-unit allocation and reviewed tax and benefit
-mappings before publication-quality interpretation.
+added. It sums tax-unit/person tax components within each household before
+assigning household resources to people, which avoids dropping child rows whose
+tax variables are not populated. Output from the starter raw bridge is useful
+for pipeline validation but still requires reviewed resource-unit allocation and
+reviewed tax and benefit mappings before publication-quality interpretation.
 
 ## Research questions
 

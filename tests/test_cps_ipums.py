@@ -10,6 +10,7 @@ import pytest
 from economics.cps import (
     CpsVariant,
     build_cps_person_resources,
+    diagnose_cps_estimation_attrition,
     estimate_cps_annual_medians,
     normalize_ipums_cps_asec_extract,
     summarize_cps_preflight,
@@ -119,6 +120,137 @@ def test_estimate_cps_annual_medians_uses_person_weights_by_year() -> None:
         "Median adult-equivalent disposable resources"
     ]
     assert medians["source"].unique().tolist() == ["CPS ASEC/IPUMS normalized extract"]
+
+
+def test_normalize_ipums_cps_asec_extract_attaches_household_tax_unit_totals() -> None:
+    raw = pd.DataFrame(
+        [
+            {
+                "YEAR": 2021,
+                "SERIAL": 1,
+                "PERNUM": 1,
+                "AGE": 40,
+                "ASECWT": 1,
+                "NUMPREC": 2,
+                "HHINCOME": 80_000,
+                "CAPGAIN": 99_999,
+                "FEDTAX": 6_000,
+                "FICA": 3_000,
+                "STATETAX": 1_000,
+            },
+            {
+                "YEAR": 2021,
+                "SERIAL": 1,
+                "PERNUM": 2,
+                "AGE": 10,
+                "ASECWT": 1,
+                "NUMPREC": 2,
+                "HHINCOME": 80_000,
+                "CAPGAIN": 99_999,
+                "FEDTAX": 99_999_999,
+                "FICA": 99_999,
+                "STATETAX": 9_999_999,
+            },
+            {
+                "YEAR": 2021,
+                "SERIAL": 2,
+                "PERNUM": 1,
+                "AGE": 40,
+                "ASECWT": 1,
+                "NUMPREC": 1,
+                "HHINCOME": 30_000,
+                "CAPGAIN": 99_999,
+                "FEDTAX": 2_000,
+                "FICA": 1_000,
+                "STATETAX": 500,
+            },
+        ]
+    )
+    normalized = normalize_ipums_cps_asec_extract(raw)
+
+    rows = build_cps_person_resources(
+        normalized,
+        CpsVariant(include_capital_gains=False, include_health_insurance=False),
+    )
+
+    assert normalized[
+        ["serial", "pernum", "federal_income_taxes", "payroll_taxes", "state_local_income_taxes"]
+    ].to_dict("records") == [
+        {
+            "serial": 1,
+            "pernum": 1,
+            "federal_income_taxes": 6_000.0,
+            "payroll_taxes": 3_000.0,
+            "state_local_income_taxes": 1_000.0,
+        },
+        {
+            "serial": 1,
+            "pernum": 2,
+            "federal_income_taxes": 6_000.0,
+            "payroll_taxes": 3_000.0,
+            "state_local_income_taxes": 1_000.0,
+        },
+        {
+            "serial": 2,
+            "pernum": 1,
+            "federal_income_taxes": 2_000.0,
+            "payroll_taxes": 1_000.0,
+            "state_local_income_taxes": 500.0,
+        },
+    ]
+    assert rows[["serial", "pernum", "comprehensive_resources"]].to_dict("records") == [
+        {"serial": 1, "pernum": 1, "comprehensive_resources": 70_000.0},
+        {"serial": 1, "pernum": 2, "comprehensive_resources": 70_000.0},
+        {"serial": 2, "pernum": 1, "comprehensive_resources": 26_500.0},
+    ]
+    assert rows.loc[rows["serial"] == 1, "equivalized_resources"].tolist() == [
+        pytest.approx(49_497.474683),
+        pytest.approx(49_497.474683),
+    ]
+
+
+def test_build_cps_person_resources_does_not_resum_repeated_household_components() -> None:
+    df = pd.DataFrame(
+        [
+            {
+                "year": 2020,
+                "serial": 1,
+                "pernum": 1,
+                "age": 40,
+                "asecwt": 1,
+                "household_size": 2,
+                "money_income": 80_000,
+                "realized_capital_gains": pd.NA,
+                "noncash_benefits": 0,
+                "health_insurance_value": pd.NA,
+                "federal_income_taxes": 10_000,
+                "payroll_taxes": 4_000,
+                "state_local_income_taxes": 1_000,
+            },
+            {
+                "year": 2020,
+                "serial": 1,
+                "pernum": 2,
+                "age": 10,
+                "asecwt": 1,
+                "household_size": 2,
+                "money_income": 80_000,
+                "realized_capital_gains": pd.NA,
+                "noncash_benefits": 0,
+                "health_insurance_value": pd.NA,
+                "federal_income_taxes": 10_000,
+                "payroll_taxes": 4_000,
+                "state_local_income_taxes": 1_000,
+            },
+        ]
+    )
+
+    rows = build_cps_person_resources(
+        df,
+        CpsVariant(include_capital_gains=False, include_health_insurance=False),
+    )
+
+    assert rows["comprehensive_resources"].tolist() == [65_000.0, 65_000.0]
 
 
 def test_estimate_cps_annual_medians_rejects_duplicate_person_rows() -> None:
@@ -325,6 +457,93 @@ def test_summarize_cps_preflight_reports_missingness_duplicates_and_attrition() 
     ]
 
 
+def test_diagnose_cps_estimation_attrition_segments_dropped_rows() -> None:
+    df = pd.concat(
+        [
+            cps_fixture(),
+            pd.DataFrame(
+                [
+                    {
+                        "year": 2020,
+                        "serial": 4,
+                        "pernum": 1,
+                        "age": 12,
+                        "asecwt": 1,
+                        "household_size": 2,
+                        "money_income": 0,
+                        "realized_capital_gains": pd.NA,
+                        "noncash_benefits": 0,
+                        "health_insurance_value": pd.NA,
+                        "federal_income_taxes": pd.NA,
+                        "payroll_taxes": pd.NA,
+                        "state_local_income_taxes": pd.NA,
+                    },
+                    {
+                        "year": 2020,
+                        "serial": 5,
+                        "pernum": 1,
+                        "age": 35,
+                        "asecwt": 1,
+                        "household_size": 3,
+                        "money_income": 150_000,
+                        "realized_capital_gains": pd.NA,
+                        "noncash_benefits": 0,
+                        "health_insurance_value": pd.NA,
+                        "federal_income_taxes": pd.NA,
+                        "payroll_taxes": pd.NA,
+                        "state_local_income_taxes": pd.NA,
+                    },
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+
+    diagnostics = diagnose_cps_estimation_attrition(
+        df,
+        CpsVariant(include_capital_gains=False, include_health_insurance=False),
+    )
+
+    assert diagnostics[
+        (diagnostics["year"] == 2020)
+        & (diagnostics["segment_type"] == "overall")
+        & (diagnostics["segment_value"] == "all")
+    ].to_dict("records") == [
+        {
+            "year": 2020,
+            "segment_type": "overall",
+            "segment_value": "all",
+            "population_rows": 4,
+            "estimation_rows": 2,
+            "dropped_rows": 2,
+            "retained_pct": 50.0,
+            "bad_weight_rows": 0,
+            "bad_household_size_rows": 0,
+            "missing_age_rows": 0,
+            "missing_required_value_rows": 2,
+            "missing_money_income_rows": 0,
+            "missing_realized_capital_gains_rows": 2,
+            "missing_noncash_benefits_rows": 0,
+            "missing_health_insurance_value_rows": 2,
+            "missing_federal_income_taxes_rows": 2,
+            "missing_payroll_taxes_rows": 2,
+            "missing_state_local_income_taxes_rows": 2,
+            "variant": "all_without_capital_gains_without_health_insurance",
+        },
+    ]
+    age_rows = diagnostics[
+        (diagnostics["year"] == 2020) & (diagnostics["segment_type"] == "age_group")
+    ].set_index("segment_value")
+    assert age_rows.loc["under_18", "dropped_rows"] == 1
+    assert age_rows.loc["25_44", "dropped_rows"] == 1
+
+    income_rows = diagnostics[
+        (diagnostics["year"] == 2020)
+        & (diagnostics["segment_type"] == "money_income_bucket")
+    ].set_index("segment_value")
+    assert income_rows.loc["100000_199999", "missing_required_value_rows"] == 1
+
+
 def ipums_raw_fixture() -> pd.DataFrame:
     return pd.DataFrame(
         [
@@ -502,9 +721,10 @@ def test_build_cps_ipums_demo_script_normalizes_ipums_raw_extract(tmp_path: Path
     ]
     assert output["notes"].unique().tolist() == [
         "Built from a rectangularized IPUMS CPS ASEC extract. The starter bridge "
-        "zero-fills noncash benefits and health-insurance value, and this output "
-        "excludes realized capital gains because CAPGAIN is unavailable after 2008. "
-        "Review the preflight summary before interpreting row retention."
+        "zero-fills noncash benefits and health-insurance value, sums tax-unit "
+        "tax components to household totals, and excludes realized capital gains "
+        "because CAPGAIN is unavailable after 2008. Review the preflight summary "
+        "before interpreting row retention."
     ]
 
 
@@ -529,3 +749,43 @@ def test_build_cps_ipums_demo_script_reports_missing_raw_file(tmp_path: Path) ->
     assert result.returncode == 1
     assert f"Expected CPS/IPUMS input file not found: {missing_raw}" in result.stderr
     assert not out_csv.exists()
+
+
+def test_diagnose_cps_ipums_attrition_script_writes_diagnostics(tmp_path: Path) -> None:
+    raw_csv = tmp_path / "ipums_cps_asec_extract.csv"
+    out_csv = tmp_path / "diagnostics.csv"
+    df = cps_fixture()
+    df.loc[(df["year"] == 2020) & (df["age"] < 18), "federal_income_taxes"] = pd.NA
+    df.to_csv(raw_csv, index=False)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(repo_root() / "scripts" / "diagnose_cps_ipums_attrition.py"),
+            "--input-csv",
+            str(raw_csv),
+            "--out",
+            str(out_csv),
+        ],
+        cwd=repo_root(),
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    output = pd.read_csv(out_csv)
+
+    assert "Wrote" in result.stdout
+    assert "CPS/IPUMS attrition diagnostic rows" in result.stdout
+    assert {
+        "overall",
+        "age_group",
+        "household_size_bucket",
+        "money_income_bucket",
+    }.issubset(set(output["segment_type"]))
+    assert output.loc[
+        (output["year"] == 2020)
+        & (output["segment_type"] == "overall")
+        & (output["segment_value"] == "all"),
+        "dropped_rows",
+    ].iloc[0] == 1

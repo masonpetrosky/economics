@@ -245,7 +245,9 @@ python scripts/build_cps_ipums_demo.py \
 For IPUMS-format input, the builder defaults to excluding realized capital gains
 because IPUMS CPS `CAPGAIN` is unavailable after ASEC 2008. It also defaults to
 excluding health-insurance value because the starter raw bridge currently
-zero-fills that component until a reviewed valuation mapping is added.
+zero-fills that component until a reviewed valuation mapping is added. The
+starter estimator sums IPUMS tax-unit/person tax components to household totals
+before assigning household resources to each person.
 
 The script writes:
 
@@ -254,9 +256,21 @@ data/processed/cps_ipums_median_adult_equivalent_resources.csv
 data/processed/cps_ipums_preflight_summary.csv
 ```
 
-Until the raw extract, resource-unit mapping, noncash benefits, health benefits,
-and tax treatment are reviewed, this workflow is a schema and estimator
-demonstration rather than research evidence.
+To inspect who the current estimator keeps or drops, run:
+
+```bash
+python scripts/diagnose_cps_ipums_attrition.py
+```
+
+The diagnostic table is written to:
+
+```text
+outputs/tables/cps_ipums_attrition_diagnostics.csv
+```
+
+Until resource-unit mapping, noncash benefits, health benefits, and tax treatment
+are reviewed, this workflow is a schema and estimator demonstration rather than
+research evidence.
 
 ## Current starter files
 
