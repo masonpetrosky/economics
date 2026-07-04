@@ -19,6 +19,7 @@ from economics.prices import (
     convert_nominal_series_to_real,
     validate_annual_price_index,
 )
+from economics.proxy_qa import build_indexed_common_overlap, load_cps_public_proxy_series
 from economics.resources import ResourceComponents
 from economics.series import add_growth_columns, real_value, summarize_series, weighted_median
 from economics.tables import build_comparison_summary
@@ -37,6 +38,7 @@ __all__ = [
     "build_comparison_summary",
     "build_cbo_proxy_from_researchers_zip",
     "build_cps_person_resources",
+    "build_indexed_common_overlap",
     "build_fred_series",
     "convert_nominal_series_to_real",
     "diagnose_cps_estimation_attrition",
@@ -44,6 +46,7 @@ __all__ = [
     "estimate_cps_annual_medians",
     "load_cbo_proxy",
     "load_comparison_series",
+    "load_cps_public_proxy_series",
     "normalize_ipums_cps_asec_extract",
     "real_value",
     "square_root_equivalence_scale",
