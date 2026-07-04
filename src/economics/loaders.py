@@ -57,6 +57,14 @@ RAW_SOURCE_FILE_SPECS: dict[str, SourceFileSpec] = {
             "and federal taxes."
         ),
     ),
+    "annual_price_index": SourceFileSpec(
+        file_name="annual_price_index.csv",
+        required_columns=("year", "price_index"),
+        description=(
+            "Manual annual price-index series used to convert nominal CPS/IPUMS "
+            "median resources into base-year real dollars."
+        ),
+    ),
     "ipums_cps_asec_extract": SourceFileSpec(
         file_name="ipums_cps_asec_extract.csv",
         required_columns=CPS_IPUMS_REQUIRED_COLUMNS,
